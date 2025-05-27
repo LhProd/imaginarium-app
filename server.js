@@ -1,44 +1,58 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config();
 
 const app = express();
-const db = new sqlite3.Database('database.db');
+const PORT = process.env.PORT || 3000;
 
-// Middleware
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Create table if it doesn't exist
-db.run(`CREATE TABLE IF NOT EXISTS thoughts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+pool.query(`
+  CREATE TABLE IF NOT EXISTS thoughts (
+    id SERIAL PRIMARY KEY,
     content TEXT NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`).catch(err => console.error('Error creating table:', err));
 
-// API: Submit a thought
-app.post('/api/thoughts', (req, res) => {
+app.post('/api/thoughts', async (req, res) => {
   const { content } = req.body;
   if (!content) return res.status(400).json({ error: 'No content provided' });
 
-  db.run(`INSERT INTO thoughts (content) VALUES (?)`, [content], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, id: this.lastID });
-  });
+  try {
+    const result = await pool.query(
+      'INSERT INTO thoughts (content) VALUES ($1) RETURNING id',
+      [content]
+    );
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-// API: Get all thoughts
-app.get('/api/thoughts', (req, res) => {
-  db.all(`SELECT * FROM thoughts ORDER BY timestamp DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+app.get('/api/thoughts', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM thoughts ORDER BY timestamp DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Start server
-const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
