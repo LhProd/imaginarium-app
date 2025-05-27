@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <ul id="thoughtList"></ul>
+<script>
+fetch('/api/thoughts')
+  .then(res => res.json())
+  .then(data => {
+    const list = document.getElementById("thoughtList");
+    data.forEach(thought => {
+      const li = document.createElement("li");
+      li.textContent = `${thought.content} (${new Date(thought.timestamp).toLocaleString()})`;
+      list.appendChild(li);
+    });
+  });
+</script>
+</body>
+</html>
