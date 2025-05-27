@@ -7,30 +7,45 @@
 </head>
 <body>
 <h1>Submissions:</h1>
-<button id="clearBtn">Clear</button>
+<button id="clearBtn">Clear All</button>
 <ul id="thoughtList"></ul>
 
-  <script>
-    async function loadThoughts() {
-      try {
-        const res = await fetch('/api/thoughts');
-        const data = await res.json();
+<script>
+  async function loadThoughts() {
+    try {
+      const res = await fetch('/api/thoughts');
+      const data = await res.json();
 
-        const list = document.getElementById("thoughtList");
-        list.innerHTML = '';
+      const list = document.getElementById("thoughtList");
+      list.innerHTML = '';
 
-        data.forEach(thought => {
-          const li = document.createElement("li");
-          li.textContent = `${thought.content} (${new Date(thought.timestamp).toLocaleString()})`;
-          list.appendChild(li);
-        });
-      } catch (err) {
-        console.error('Failed to load thoughts:', err);
-      }
+      data.forEach(thought => {
+        const li = document.createElement("li");
+        li.textContent = `${thought.content} (${new Date(thought.timestamp).toLocaleString()})`;
+        list.appendChild(li);
+      });
+    } catch (err) {
+      console.error('Failed to load thoughts:', err);
     }
+  }
 
-    loadThoughts();
-    setInterval(loadThoughts, 5000);
-  </script>
+  document.getElementById('clearBtn').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to clear all submissions?')) return;
+
+    try {
+      const res = await fetch('/api/thoughts', { method: 'DELETE' });
+      if (res.ok) {
+        loadThoughts();  // refresh list after clearing
+      } else {
+        alert('Failed to clear submissions.');
+      }
+    } catch (err) {
+      console.error('Error clearing thoughts:', err);
+    }
+  });
+
+  loadThoughts();
+  setInterval(loadThoughts, 5000);
+</script>
 </body>
 </html>

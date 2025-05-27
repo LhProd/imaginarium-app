@@ -54,9 +54,8 @@ app.get('/api/thoughts', async (req, res) => {
 
 app.delete('/api/thoughts', async (req, res) => {
   try {
-    // Delete all rows from the 'thoughts' table
     await pool.query('DELETE FROM thoughts');
-    res.json({ success: true }); // respond with success message
+    res.json({ success: true });
   } catch (err) {
     console.error('Error deleting thoughts:', err);
     res.status(500).json({ error: 'Failed to clear thoughts' });
