@@ -1,23 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Submitted Thoughts</title>
 </head>
 <body>
-    <ul id="thoughtList"></ul>
-<script>
-fetch('/api/thoughts')
-  .then(res => res.json())
-  .then(data => {
-    const list = document.getElementById("thoughtList");
-    data.forEach(thought => {
-      const li = document.createElement("li");
-      li.textContent = `${thought.content} (${new Date(thought.timestamp).toLocaleString()})`;
-      list.appendChild(li);
-    });
-  });
-</script>
+  <h1>Latest Submissions</h1>
+  <ul id="thoughtList"></ul>
+
+  <script>
+    async function loadThoughts() {
+      try {
+        const res = await fetch('/api/thoughts');
+        const data = await res.json();
+
+        const list = document.getElementById("thoughtList");
+        list.innerHTML = '';
+
+        data.forEach(thought => {
+          const li = document.createElement("li");
+          li.textContent = `${thought.content} (${new Date(thought.timestamp).toLocaleString()})`;
+          list.appendChild(li);
+        });
+      } catch (err) {
+        console.error('Failed to load thoughts:', err);
+      }
+    }
+
+    loadThoughts();
+    setInterval(loadThoughts, 5000);
+  </script>
 </body>
 </html>
