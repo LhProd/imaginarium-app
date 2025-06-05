@@ -40,7 +40,6 @@
 <textarea id="promptInput" rows="2" style="width: 100%; font-size: 1rem;"></textarea>
 <button onclick="updatePrompt()">Update Prompt</button>
 <div id="promptStatus"></div>
-    <p>Total Sentiment Score: <strong id="sentimentSum">Loading...</strong></p>
     <p>Average Sentiment Score: <strong id="sentimentAvg">Loading...</strong></p>
     <button onclick="clearThoughts()">Clear All Thoughts</button>
     <div id="status"></div>
@@ -110,7 +109,7 @@ loadPrompt();
     }
 
     fetchSentimentAvg();
-    
+
   </script>
 </body>
 </html>
