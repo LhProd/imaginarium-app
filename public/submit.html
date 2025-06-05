@@ -11,41 +11,45 @@
       overflow: hidden;
       background: #fefefe;
       font-family: sans-serif;
-      width: 100%;
-      height: 100%;
     }
 
     #thoughtContainer {
       position: relative;
       width: 100vw;
       height: 100vh;
-      overflow: hidden;
     }
 
     @keyframes popIn {
-      0% { transform: scale(0.2); opacity: 0; }
-      60% { transform: scale(1.4); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
+      0% {
+        transform: scale(0.2);
+        opacity: 0;
+      }
+      60% {
+        transform: scale(1.4);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
 
-    .thought {
-      position: absolute;
-      padding: 0.8em 1.2em;
-      background: rgba(255, 255, 255, 0.9);
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      transition: background-color 0.5s ease;
-      cursor: pointer;
-      user-select: none;
-      opacity: 0;
-      transform: scale(0.2);
-      font-size: 1.2rem;
-      max-width: 90vw;
-      width: fit-content;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-
+.thought {
+  position: absolute;
+  padding: 0.8em 1.2em;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: background-color 0.5s ease;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0;
+  transform: scale(0.2);
+  font-size: 1.2rem;
+  max-width: 320px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
     .thought.pop {
       animation: popIn 0.6s ease forwards;
     }
@@ -55,14 +59,6 @@
       background-color: #d0f0ff;
       transition: transform 1s ease;
     }
-
-    @media (max-width: 600px) {
-      .thought {
-        font-size: 1rem;
-        padding: 0.6em 1em;
-        max-width: 85vw;
-      }
-    }
   </style>
 </head>
 <body>
@@ -70,7 +66,7 @@
 
 <script>
   const container = document.getElementById("thoughtContainer");
-  const thoughts = new Map();
+  const thoughts = new Map(); // Map by ID
 
   async function loadThoughts() {
     try {
@@ -80,6 +76,7 @@
       const existingIds = new Set(thoughts.keys());
 
       data.forEach((thought, index) => {
+        // Skip re-adding existing thoughts
         if (thoughts.has(thought.id)) return;
 
         const el = document.createElement("div");
@@ -101,7 +98,9 @@
         el.style.top = pos.y + "px";
         container.appendChild(el);
 
-        setTimeout(() => el.classList.add("pop"), index * 150);
+        setTimeout(() => {
+          el.classList.add("pop");
+        }, index * 150);
 
         thoughts.set(thought.id, {
           el: el,
@@ -109,8 +108,8 @@
           y: pos.y,
           dx: (Math.random() - 0.5) * 1.5,
           dy: (Math.random() - 0.5) * 1.5,
-          width: el.offsetWidth,
-          height: el.offsetHeight
+          width: 200,
+          height: 40
         });
       });
     } catch (err) {
@@ -135,7 +134,10 @@
     requestAnimationFrame(animate);
   }
 
+  // Initial load
   loadThoughts().then(() => animate());
+
+  // Refresh new thoughts every 10s without wiping positions
   setInterval(loadThoughts, 10000);
 </script>
 </body>
