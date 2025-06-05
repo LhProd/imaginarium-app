@@ -1,18 +1,38 @@
+
+✅ Updated script.js:
+
 window.addEventListener("DOMContentLoaded", () => {
-  // Handle prompt loading
-  fetch('/api/prompt')
-    .then(res => res.json())
-    .then(data => {
-      const promptEl = document.querySelector(".prompt");
+  const promptEl = document.querySelector(".prompt");
+
+  async function loadPrompt(highlightChange = false) {
+    try {
+      const res = await fetch('/api/prompt');
+      const data = await res.json();
       if (promptEl) {
-        promptEl.textContent = data.text;
+        if (promptEl.textContent !== data.text) {
+          promptEl.textContent = data.text;
+
+          if (highlightChange) {
+            promptEl.style.transition = 'background-color 0.4s ease';
+            promptEl.style.backgroundColor = '#ffff99';
+            setTimeout(() => {
+              promptEl.style.backgroundColor = '';
+            }, 800);
+          }
+        }
       } else {
         console.warn("Prompt element not found.");
       }
-    })
-    .catch(err => {
+    } catch (err) {
       console.error("Failed to load prompt:", err);
-    });
+    }
+  }
+
+  // Initial prompt load
+  loadPrompt();
+
+  // Refresh prompt every 60 seconds
+  setInterval(() => loadPrompt(true), 60000);
 
   // Handle thought submission
   const form = document.getElementById("thoughtForm");

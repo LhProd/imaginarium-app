@@ -26,9 +26,13 @@
     button:hover {
       background: #e04848;
     }
-    #status {
+    #status, #promptStatus {
       margin-top: 1rem;
       font-weight: bold;
+    }
+    .highlight {
+      background-color: #ffff99;
+      transition: background-color 0.5s ease;
     }
   </style>
 </head>
@@ -37,58 +41,76 @@
 
   <div>
     <h2>Edit Prompt</h2>
-<textarea id="promptInput" rows="2" style="width: 100%; font-size: 1rem;"></textarea>
-<button onclick="updatePrompt()">Update Prompt</button>
-<div id="promptStatus"></div>
+    <textarea id="promptInput" rows="2" style="width: 100%; font-size: 1rem;"></textarea>
+    <button onclick="updatePrompt()">Update Prompt</button>
+    <div id="promptStatus"></div>
+
     <p>Average Sentiment Score: <strong id="sentimentAvg">Loading...</strong></p>
     <button onclick="clearThoughts()">Clear All Thoughts</button>
     <div id="status"></div>
   </div>
 
   <script>
+    let lastPromptText = '';
+    let lastAvgSentiment = null;
 
-async function loadPrompt() {
-  try {
-    const res = await fetch('/api/prompt');
-    const data = await res.json();
-    document.getElementById('promptInput').value = data.text;
-  } catch (err) {
-    console.error('Failed to load prompt:', err);
-  }
-}
-
-async function updatePrompt() {
-  const text = document.getElementById('promptInput').value;
-  try {
-    const res = await fetch('/api/prompt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
-    const result = await res.json();
-    if (result.success) {
-      document.getElementById('promptStatus').textContent = "Prompt updated!";
-    } else {
-      throw new Error(result.error);
+    function highlightChange(el) {
+      el.classList.add("highlight");
+      setTimeout(() => el.classList.remove("highlight"), 500);
     }
-  } catch (err) {
-    document.getElementById('promptStatus').textContent = "Error updating prompt.";
-    console.error(err);
-  }
-}
 
-loadPrompt();
+    async function loadPrompt() {
+      try {
+        const res = await fetch('/api/prompt');
+        const data = await res.json();
+        const input = document.getElementById('promptInput');
+
+        if (input.value !== data.text) {
+          input.value = data.text;
+          highlightChange(input);
+        }
+      } catch (err) {
+        console.error('Failed to load prompt:', err);
+      }
+    }
+
+    async function updatePrompt() {
+      const text = document.getElementById('promptInput').value;
+      try {
+        const res = await fetch('/api/prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById('promptStatus').textContent = "✅ Prompt updated!";
+          highlightChange(document.getElementById('promptInput'));
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (err) {
+        document.getElementById('promptStatus').textContent = "❌ Error updating prompt.";
+        console.error(err);
+      }
+    }
 
     async function fetchSentimentAvg() {
-  try {
-    const res = await fetch('/api/sentiment-avg');
-    const data = await res.json();
-    document.getElementById("sentimentAvg").textContent = data.avg.toFixed(2);
-  } catch (err) {
-    document.getElementById("sentimentAvg").textContent = "Error loading";
-    console.error("Failed to fetch sentiment average:", err);
-  }
-}
+      try {
+        const res = await fetch('/api/sentiment-avg');
+        const data = await res.json();
+        const el = document.getElementById("sentimentAvg");
+
+        const newAvg = parseFloat(data.avg || 0).toFixed(2);
+        if (el.textContent !== newAvg) {
+          el.textContent = newAvg;
+          highlightChange(el);
+        }
+      } catch (err) {
+        document.getElementById("sentimentAvg").textContent = "Error loading";
+        console.error("Failed to fetch sentiment average:", err);
+      }
+    }
 
     async function clearThoughts() {
       if (!confirm("Are you sure you want to delete all thoughts?")) return;
@@ -97,18 +119,24 @@ loadPrompt();
         const res = await fetch('/api/thoughts', { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
-          document.getElementById("status").textContent = "Thoughts cleared!";
+          document.getElementById("status").textContent = "✅ Thoughts cleared!";
+          fetchSentimentAvg(); // refresh
         } else {
           throw new Error(data.error || "Failed to delete");
         }
       } catch (err) {
-        document.getElementById("status").textContent = "Error clearing thoughts.";
+        document.getElementById("status").textContent = "❌ Error clearing thoughts.";
         console.error(err);
       }
     }
 
+    // Initial load
+    loadPrompt();
     fetchSentimentAvg();
 
+    // Real-time updates
+    setInterval(fetchSentimentAvg, 10000); // every 10s
+    setInterval(loadPrompt, 30000);        // every 30s
   </script>
 </body>
 </html>
