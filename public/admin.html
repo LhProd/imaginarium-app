@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #f5f5f5;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.7em 1.2em;
+      font-size: 1rem;
+      background: #ff5c5c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    button:hover {
+      background: #e04848;
+    }
+    #status {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Imaginarium Admin Panel</h1>
+
+  <div>
+    <h2>Edit Prompt</h2>
+<textarea id="promptInput" rows="2" style="width: 100%; font-size: 1rem;"></textarea>
+<button onclick="updatePrompt()">Update Prompt</button>
+<div id="promptStatus"></div>
+    <p>Total Sentiment Score: <strong id="sentimentSum">Loading...</strong></p>
+    <p>Average Sentiment Score: <strong id="sentimentAvg">Loading...</strong></p>
+    <button onclick="clearThoughts()">Clear All Thoughts</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+
+async function loadPrompt() {
+  try {
+    const res = await fetch('/api/prompt');
+    const data = await res.json();
+    document.getElementById('promptInput').value = data.text;
+  } catch (err) {
+    console.error('Failed to load prompt:', err);
+  }
+}
+
+async function updatePrompt() {
+  const text = document.getElementById('promptInput').value;
+  try {
+    const res = await fetch('/api/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const result = await res.json();
+    if (result.success) {
+      document.getElementById('promptStatus').textContent = "Prompt updated!";
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (err) {
+    document.getElementById('promptStatus').textContent = "Error updating prompt.";
+    console.error(err);
+  }
+}
+
+loadPrompt();
+
+    async function fetchSentimentAvg() {
+  try {
+    const res = await fetch('/api/sentiment-avg');
+    const data = await res.json();
+    document.getElementById("sentimentAvg").textContent = data.avg.toFixed(2);
+  } catch (err) {
+    document.getElementById("sentimentAvg").textContent = "Error loading";
+    console.error("Failed to fetch sentiment average:", err);
+  }
+}
+
+    async function clearThoughts() {
+      if (!confirm("Are you sure you want to delete all thoughts?")) return;
+
+      try {
+        const res = await fetch('/api/thoughts', { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById("status").textContent = "Thoughts cleared!";
+          document.getElementById("sentimentSum").textContent = "0.00";
+        } else {
+          throw new Error(data.error || "Failed to delete");
+        }
+      } catch (err) {
+        document.getElementById("status").textContent = "Error clearing thoughts.";
+        console.error(err);
+      }
+    }
+
+    fetchSentimentAvg();
+    
+  </script>
+</body>
+</html>
