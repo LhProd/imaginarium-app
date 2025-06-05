@@ -1,6 +1,3 @@
-
-✅ Updated script.js:
-
 window.addEventListener("DOMContentLoaded", () => {
   const promptEl = document.querySelector(".prompt");
 
