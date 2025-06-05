@@ -98,7 +98,6 @@ loadPrompt();
         const data = await res.json();
         if (data.success) {
           document.getElementById("status").textContent = "Thoughts cleared!";
-          document.getElementById("sentimentSum").textContent = "0.00";
         } else {
           throw new Error(data.error || "Failed to delete");
         }
