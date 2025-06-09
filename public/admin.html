@@ -2,38 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imaginarium Admin Panel</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 2rem;
-      background: #f5f5f5;
-    }
-    h1 {
-      margin-bottom: 1rem;
-    }
-    button {
-      padding: 0.7em 1.2em;
-      font-size: 1rem;
-      background: #ff5c5c;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 1rem;
-    }
-    button:hover {
-      background: #e04848;
-    }
-    #status, #promptStatus {
-      margin-top: 1rem;
-      font-weight: bold;
-    }
-    .highlight {
-      background-color: #ffff99;
-      transition: background-color 0.5s ease;
-    }
+    body { font-family: sans-serif; padding: 2rem; background: #f5f5f5; }
+    h1 { margin-bottom: 1rem; }
+    button { padding: 0.7em 1.2em; font-size: 1rem; background: #ff5c5c; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 1rem; }
+    button:hover { background: #e04848; }
+    #status, #promptStatus { margin-top: 0.5rem; font-weight: bold; }
+    #sentimentAvg, #colorInfo { font-weight: bold; }
   </style>
 </head>
 <body>
@@ -41,102 +18,79 @@
 
   <div>
     <h2>Edit Prompt</h2>
-    <textarea id="promptInput" rows="2" style="width: 100%; font-size: 1rem;"></textarea>
+    <textarea id="promptInput" rows="2" style="width:100%; font-size:1rem;"></textarea>
     <button onclick="updatePrompt()">Update Prompt</button>
     <div id="promptStatus"></div>
 
-    <p>Average Sentiment Score: <strong id="sentimentAvg">Loading...</strong></p>
+    <h2>Sentiment Metrics</h2>
+    <p>Average Sentiment Score: <span id="sentimentAvg">Loading...</span></p>
+    <p>Current Galaxy Color (H, S%, L%): <span id="colorInfo">Loading...</span></p>
+
     <button onclick="clearThoughts()">Clear All Thoughts</button>
     <div id="status"></div>
   </div>
 
   <script>
-    let lastPromptText = '';
-    let lastAvgSentiment = null;
-
-    function highlightChange(el) {
-      el.classList.add("highlight");
-      setTimeout(() => el.classList.remove("highlight"), 500);
-    }
-
+    // Load and update prompt
     async function loadPrompt() {
       try {
         const res = await fetch('/api/prompt');
         const data = await res.json();
-        const input = document.getElementById('promptInput');
-
-        if (input.value !== data.text) {
-          input.value = data.text;
-          highlightChange(input);
-        }
+        document.getElementById('promptInput').value = data.text;
       } catch (err) {
         console.error('Failed to load prompt:', err);
       }
     }
-
     async function updatePrompt() {
       const text = document.getElementById('promptInput').value;
       try {
-        const res = await fetch('/api/prompt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
-        });
+        const res = await fetch('/api/prompt', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
         const result = await res.json();
-        if (result.success) {
-          document.getElementById('promptStatus').textContent = "✅ Prompt updated!";
-          highlightChange(document.getElementById('promptInput'));
-        } else {
-          throw new Error(result.error);
-        }
+        document.getElementById('promptStatus').textContent = result.success ? 'Prompt updated!' : 'Error updating prompt.';
       } catch (err) {
-        document.getElementById('promptStatus').textContent = "❌ Error updating prompt.";
+        document.getElementById('promptStatus').textContent = 'Error updating prompt.';
         console.error(err);
       }
     }
+    loadPrompt();
 
-    async function fetchSentimentAvg() {
+    // Fetch average sentiment and compute color
+    async function fetchSentimentMetrics() {
       try {
         const res = await fetch('/api/sentiment-avg');
-        const data = await res.json();
-        const el = document.getElementById("sentimentAvg");
+        const { avg } = await res.json();
+        // Display sentiment
+        document.getElementById('sentimentAvg').textContent = avg.toFixed(2);
 
-        const newAvg = parseFloat(data.avg || 0).toFixed(2);
-        if (el.textContent !== newAvg) {
-          el.textContent = newAvg;
-          highlightChange(el);
-        }
+        // Map avg [-1,1] to HSL: red→yellow→green
+        const v = Math.max(-1, Math.min(1, avg));
+        const hue = (v + 1) * 60;      // 0 to 120
+        const sat = 50 + Math.abs(v) * 50; // 50% to 100%
+        const light = 40 + Math.abs(v) * 30; // 40% to 70%
+
+        // Update display
+        document.getElementById('colorInfo').textContent =
+          `${hue.toFixed(0)}°, ${sat.toFixed(0)}%, ${light.toFixed(0)}%`;
       } catch (err) {
-        document.getElementById("sentimentAvg").textContent = "Error loading";
-        console.error("Failed to fetch sentiment average:", err);
+        console.error('Failed to fetch sentiment metrics:', err);
       }
     }
+    // Initial and periodic updates
+    fetchSentimentMetrics();
+    setInterval(fetchSentimentMetrics, 5000);
 
+    // Clear thoughts
     async function clearThoughts() {
-      if (!confirm("Are you sure you want to delete all thoughts?")) return;
-
+      if (!confirm('Are you sure you want to delete all thoughts?')) return;
       try {
         const res = await fetch('/api/thoughts', { method: 'DELETE' });
         const data = await res.json();
-        if (data.success) {
-          document.getElementById("status").textContent = "✅ Thoughts cleared!";
-          fetchSentimentAvg(); // refresh
-        } else {
-          throw new Error(data.error || "Failed to delete");
-        }
+        document.getElementById('status').textContent = data.success ? 'Thoughts cleared!' : 'Error clearing thoughts.';
       } catch (err) {
-        document.getElementById("status").textContent = "❌ Error clearing thoughts.";
+        document.getElementById('status').textContent = 'Error clearing thoughts.';
         console.error(err);
       }
     }
-
-    // Initial load
-    loadPrompt();
-    fetchSentimentAvg();
-
-    // Real-time updates
-    setInterval(fetchSentimentAvg, 10000); // every 10s
-    setInterval(loadPrompt, 30000);        // every 30s
   </script>
 </body>
 </html>
