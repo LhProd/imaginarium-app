@@ -11,6 +11,27 @@
     button:hover { background: #e04848; }
     #status, #promptStatus { margin-top: 0.5rem; font-weight: bold; }
     #sentimentAvg, #colorInfo { font-weight: bold; }
+    #submissions {
+      margin-top: 1.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+    }
+    #submissions div {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    #submissions div:last-child { border-bottom: none; }
+    #submissions button {
+      background: #ff5c5c;
+      padding: 0.3em 0.6em;
+      margin: 0;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
@@ -19,19 +40,29 @@
   <div>
     <h2>Edit Prompt</h2>
     <textarea id="promptInput" rows="2" style="width:100%; font-size:1rem;"></textarea>
-    <button onclick="updatePrompt()">Update Prompt</button>
+    <button id="updatePromptBtn">Update Prompt</button>
     <div id="promptStatus"></div>
 
     <h2>Sentiment Metrics</h2>
     <p>Average Sentiment Score: <span id="sentimentAvg">Loading...</span></p>
     <p>Current Galaxy Color (H, S%, L%): <span id="colorInfo">Loading...</span></p>
 
-    <button onclick="clearThoughts()">Clear All Thoughts</button>
-    <div id="status"></div>
+    <h2>Submissions</h2>
+    <div id="submissions">
+      <em>Loading submissions…</em>
+    </div>
   </div>
 
   <script>
-    // Load and update prompt
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('updatePromptBtn').addEventListener('click', updatePrompt);
+      loadPrompt();
+      fetchSentimentMetrics();
+      loadSubmissions();
+      setInterval(fetchSentimentMetrics, 5000);
+      setInterval(loadSubmissions, 10000);
+    });
+
     async function loadPrompt() {
       try {
         const res = await fetch('/api/prompt');
@@ -41,54 +72,72 @@
         console.error('Failed to load prompt:', err);
       }
     }
+
     async function updatePrompt() {
       const text = document.getElementById('promptInput').value;
       try {
-        const res = await fetch('/api/prompt', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
+        const res = await fetch('/api/prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
         const result = await res.json();
         document.getElementById('promptStatus').textContent = result.success ? 'Prompt updated!' : 'Error updating prompt.';
       } catch (err) {
+        console.error('Prompt update failed:', err);
         document.getElementById('promptStatus').textContent = 'Error updating prompt.';
-        console.error(err);
       }
     }
-    loadPrompt();
 
-    // Fetch average sentiment and compute color
     async function fetchSentimentMetrics() {
       try {
         const res = await fetch('/api/sentiment-avg');
         const { avg } = await res.json();
-        // Display sentiment
         document.getElementById('sentimentAvg').textContent = avg.toFixed(2);
-
-        // Map avg [-1,1] to HSL: red→yellow→green
         const v = Math.max(-1, Math.min(1, avg));
-        const hue = (v + 1) * 60;      // 0 to 120
-        const sat = 50 + Math.abs(v) * 50; // 50% to 100%
-        const light = 40 + Math.abs(v) * 30; // 40% to 70%
-
-        // Update display
-        document.getElementById('colorInfo').textContent =
-          `${hue.toFixed(0)}°, ${sat.toFixed(0)}%, ${light.toFixed(0)}%`;
+        const hue = (v + 1) * 60;
+        const sat = 50 + Math.abs(v) * 50;
+        const light = 40 + Math.abs(v) * 30;
+        document.getElementById('colorInfo').textContent = `${hue.toFixed(0)}°, ${sat.toFixed(0)}%, ${light.toFixed(0)}%`;
       } catch (err) {
-        console.error('Failed to fetch sentiment metrics:', err);
+        console.error('Error fetching sentiment:', err);
       }
     }
-    // Initial and periodic updates
-    fetchSentimentMetrics();
-    setInterval(fetchSentimentMetrics, 5000);
 
-    // Clear thoughts
-    async function clearThoughts() {
-      if (!confirm('Are you sure you want to delete all thoughts?')) return;
+    async function loadSubmissions() {
+      const container = document.getElementById('submissions');
+      container.innerHTML = '<em>Loading…</em>';
       try {
-        const res = await fetch('/api/thoughts', { method: 'DELETE' });
+        const res = await fetch('/api/thoughts');
         const data = await res.json();
-        document.getElementById('status').textContent = data.success ? 'Thoughts cleared!' : 'Error clearing thoughts.';
-      } catch (err) {
-        document.getElementById('status').textContent = 'Error clearing thoughts.';
-        console.error(err);
+        console.log('Loaded submissions:', data);
+
+        if (!data.length) return container.innerHTML = '<em>No submissions yet.</em>';
+
+        container.innerHTML = '';
+        data.forEach(({ id, content }) => {
+          const div = document.createElement('div');
+          const span = document.createElement('span');
+          span.textContent = content;
+          const btn = document.createElement('button');
+          btn.textContent = 'Remove';
+          btn.onclick = async () => {
+            console.log('Attempting to delete ID:', id);
+            const res = await fetch(`/api/thoughts/${id}`, { method: 'DELETE' });
+            const result = await res.json().catch(() => ({}));
+            console.log('Delete result:', result);
+            if (res.ok && result.success) {
+              loadSubmissions();
+            } else {
+              alert('Failed to remove');
+            }
+          };
+          div.append(span, btn);
+          container.appendChild(div);
+        });
+      } catch (e) {
+        console.error('Error loading thoughts', e);
+        container.innerHTML = '<em>Error loading submissions.</em>';
       }
     }
   </script>

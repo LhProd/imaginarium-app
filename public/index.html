@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-   <script src="script.js"></script> 
+  <script src="script.js"></script>
   <title>Imaginarium</title>
   <style>
     /* Fullscreen background canvas */
@@ -19,6 +19,10 @@
       width: 100vw; height: 100vh;
       z-index: -1;
     }
+    img {
+      max-width: 50%;
+      margin-bottom: 5%;
+    }
     h1, h2, h3 { margin: 0.3em 0; text-align: center; }
     textarea {
       width: 80%; max-width: 600px;
@@ -27,28 +31,32 @@
       margin-top: 1rem;
       background: rgba(255,255,255,0.8); color: #000;
     }
-
-    h2 {
-      font-size: 20px;
-    }
-
-    h3 {
-      font-size: 80px;
-    }
-
+    h2 { font-size: 20px; }
+    h3 { font-size: 80px; }
     button {
       margin-top: 1rem; padding: 0.8rem 2rem;
       font-size: 1rem; border: none; border-radius: 6px;
       background: #ffffff; color: #000; cursor: pointer;
     }
-    
+
+    /* Character counter */
+    #charCount {
+      margin-top: 4px;
+      font-size: 0.9rem;
+      color: #fff;
+    }
+    #charCount.warn { color: orange; }
+    #charCount.danger { color: red; }
   </style>
 </head>
 <body>
   <canvas id="galaxyCanvas"></canvas>
+  <img src="image/img_logo.png" alt="The Imaginarium">
   <h2>Welcome to the Imaginarium, answer the prompt and watch the screen change with your answer.</h2>
   <h3 class="prompt">prompt question</h3>
-  <textarea id="thoughtInput" placeholder="Leave your thoughts here..."></textarea>
+
+  <textarea id="thoughtInput" placeholder="Leave your thoughts here..." maxlength="200"></textarea>
+  <div id="charCount">200 characters remaining</div>
   <button id="submitBtn">Submit</button>
 
   <!-- Three.js core + postprocessing -->
@@ -60,30 +68,42 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
   <script>
-    // Renderer & scene
+    // === Character Countdown Logic ===
+    const textarea = document.getElementById('thoughtInput');
+    const counter  = document.getElementById('charCount');
+    const MAX_LEN  = 200;
+
+    textarea.addEventListener('input', () => {
+      const remaining = MAX_LEN - textarea.value.length;
+      counter.textContent = `${remaining} characters remaining`;
+
+      counter.classList.toggle('warn',    remaining <= 40 && remaining > 10);
+      counter.classList.toggle('danger', remaining <= 10);
+    });
+
+    // === Three.js Galaxy Background ===
     const canvasEl = document.getElementById('galaxyCanvas');
     const renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
     camera.position.z = 200;
 
-    // Bloom composer
     const composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
     const bloomPass = new THREE.UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      1.0, // strength
-      0.4, // radius
-      0.2 // threshold
+      1.0, 0.4, 0.2
     );
     composer.addPass(bloomPass);
 
-    // Particle system
-    const count = 10000;
-    const geometry = new THREE.BufferGeometry();
+    // Particle setup
+    const count     = 10000;
+    const geometry  = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
+
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
       positions[i3]     = (Math.random() - 0.5) * 800;
@@ -92,8 +112,9 @@
     }
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    // Soft circular points via sprite texture
-    const sprite = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/disc.png');
+    const sprite = new THREE.TextureLoader().load(
+      'https://threejs.org/examples/textures/sprites/disc.png'
+    );
     const material = new THREE.PointsMaterial({
       map: sprite,
       color: 0xffffff,
@@ -104,43 +125,48 @@
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
+
     const particles = new THREE.Points(geometry, material);
     scene.add(particles);
 
-    // Mouse-responsive parallax
+    // Parallax
     let mouseX = 0, mouseY = 0;
     window.addEventListener('mousemove', e => {
-      // reduced parallax sensitivity
       mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
       mouseY = (0.5 - e.clientY / window.innerHeight) * 20;
     });
 
-    // Animation
+    // Animate
     function animate() {
       particles.rotation.y += 0.00005;
-      particles.position.x += (mouseX - particles.position.x) * 0.01;  // smoother, slower parallax
-      particles.position.y += (mouseY - particles.position.y) * 0.01;  // smoother, slower parallax
+      particles.position.x += (mouseX - particles.position.x) * 0.01;
+      particles.position.y += (mouseY - particles.position.y) * 0.01;
+
       composer.render();
       requestAnimationFrame(animate);
     }
     animate();
 
-    // Handle resize
+    // Resize
     window.addEventListener('resize', () => {
       renderer.setSize(window.innerWidth, window.innerHeight);
-      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = window.innerWidth/window.innerHeight;
       camera.updateProjectionMatrix();
       composer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Form submission
+    // Submission
     document.getElementById('submitBtn').addEventListener('click', async () => {
-      const content = document.getElementById('thoughtInput').value.trim();
+      const content = textarea.value.trim();
       if (!content) return;
       await fetch('/api/thoughts', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
       });
-      document.getElementById('thoughtInput').value = '';
+      textarea.value = '';
+      counter.textContent = `${MAX_LEN} characters remaining`;
+      counter.classList.remove('warn','danger');
       alert('Thank you!');
     });
   </script>
