@@ -21,7 +21,7 @@
     }
     img {
       max-width: 50%;
-      margin-bottom: 5%;
+      margin-bottom: 2%;
     }
     h1, h2, h3 { margin: 0.3em 0; text-align: center; }
     textarea {
@@ -32,7 +32,7 @@
       background: rgba(255,255,255,0.8); color: #000;
     }
     h2 { font-size: 20px; }
-    h3 { font-size: 80px; }
+    h3 { font-size: 4vh;}
     button {
       margin-top: 1rem; padding: 0.8rem 2rem;
       font-size: 1rem; border: none; border-radius: 6px;
@@ -47,6 +47,22 @@
     }
     #charCount.warn { color: orange; }
     #charCount.danger { color: red; }
+
+    /* Link button */
+    #backBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.7rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #000;
+      cursor: pointer;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
@@ -58,6 +74,8 @@
   <textarea id="thoughtInput" placeholder="Leave your thoughts here..." maxlength="200"></textarea>
   <div id="charCount">200 characters remaining</div>
   <button id="submitBtn">Submit</button>
+
+  <button id="backBtn" onclick="window.location.href='submit.html'">View Submissions</button>
 
   <!-- Three.js core + postprocessing -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -167,7 +185,7 @@
       textarea.value = '';
       counter.textContent = `${MAX_LEN} characters remaining`;
       counter.classList.remove('warn','danger');
-      alert('Thank you!');
+      alert('Thank you for participating in the Imaginarium, please take a look at the screen!');
     });
   </script>
 </body>
